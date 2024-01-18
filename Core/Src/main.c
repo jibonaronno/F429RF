@@ -58,6 +58,9 @@ uint8_t uart1_raw[10];
 volatile int rx_flagA = 0;
 volatile int rx_flagB = 0;
 
+volatile int rx_flagC = 0;
+volatile int rx_flagD = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -233,8 +236,8 @@ int32_t GetMidLine(int32_t *gbuff, uint32_t sz)
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
 	adcConversionComplete = 1;
-	ad1 = adraw[0]; // HAL_ADC_GetValue(&hadc1);
-	ad2 = adraw[1]; // HAL_ADC_GetValue(&hadc1);
+	ad1 = adraw[1]; // HAL_ADC_GetValue(&hadc1);
+	ad2 = adraw[0]; // HAL_ADC_GetValue(&hadc1);
 	conv_rate++;
 
 	//insert_new_value(sawtooth_buf, (int32_t)ad1);
@@ -266,6 +269,11 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 			{
 				gminA = kalman_buf1[gidxB];
 			}
+
+//			if((sawtooth_buf1[gidxB - 1] - sawtooth_buf1[gidxB]) > 500)
+//			{
+//				dripOff = 5;
+//			}
 		}
 
 		if(gidxB == 195)
@@ -293,8 +301,8 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 					if(dripOff == 0)
 					{
 						peaks_buff1[gidxB] = 2000;
-						dripOff = 20;
-						relative_sawtooth_voltage = (3300000 / 4096) * sawtooth_buf1[gidxB-3]; // sawtooth_buf1[gidxB-3]; //
+						dripOff = 22;
+						relative_sawtooth_voltage = (33000000 / 4096) * sawtooth_buf1[gidxB-3]; // sawtooth_buf1[gidxB-3]; //
 					}
 					else
 					{
@@ -413,6 +421,16 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		{
 			rx_flagB = 1;
 		}
+
+		if(uart1_raw[0] == 'c')
+		{
+			rx_flagC = 1;
+		}
+
+		if(uart1_raw[0] == 'd')
+		{
+			rx_flagD = 1;
+		}
 	}
 	HAL_UART_Receive_IT(&huart1, uart1_raw, 1);
 }
@@ -496,6 +514,7 @@ int main(void)
 			  if(adcConversionComplete == 1)
 			  {
 				  adcConversionComplete = 0;
+				  HAL_NVIC_DisableIRQ(DMA2_Stream0_IRQn);
 				  for(lidxA=0;lidxA<200;lidxA++)
 				  {
 					  //myprintf("A0:%d, A1:%d\n", signal_buf[lidxA], sawtooth_buf[lidxA]);
@@ -515,6 +534,7 @@ int main(void)
 			  gidxB = 0; // Fresh Copy of ADC
 			  rx_flagA = 0;
 			  rx_flagB = 0;
+			  HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
 		  }
 
 		  if(rx_flagB == 1)
@@ -523,7 +543,17 @@ int main(void)
 			  HAL_Delay(100);
 			  rx_flagB = 0;
 		  }
-		  myprintf("Freq : %d  Rate: %d \r\n", ((relative_sawtooth_voltage * 4107) + 5500), rateA);
+
+		  if(rx_flagC == 1)
+		  {
+			  myprintf("Freq : %d  Rate: %d \r\n", ((relative_sawtooth_voltage * 4170) + 5500), rateA);
+		  }
+
+		  if(rx_flagD == 1)
+		  {
+			  rx_flagD = 0;
+			  rx_flagC = 0;
+		  }
 		}
 
 	}
@@ -531,8 +561,9 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  }
+
   /* USER CODE END 3 */
+}
 
 /**
   * @brief System Clock Configuration
@@ -556,7 +587,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
-  RCC_OscInitStruct.PLL.PLLM = 8;
+  RCC_OscInitStruct.PLL.PLLM = 6;
   RCC_OscInitStruct.PLL.PLLN = 180;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 7;
@@ -608,7 +639,7 @@ static void MX_ADC1_Init(void)
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
   */
   hadc1.Instance = ADC1;
-  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV8;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.ScanConvMode = ENABLE;
   hadc1.Init.ContinuousConvMode = DISABLE;
@@ -628,7 +659,7 @@ static void MX_ADC1_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_13;
   sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_28CYCLES;
+  sConfig.SamplingTime = ADC_SAMPLETIME_15CYCLES;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
