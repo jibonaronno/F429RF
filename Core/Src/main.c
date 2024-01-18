@@ -473,6 +473,8 @@ int main(void)
   myprintf("Starting ... \r\n");
   myprintf("... ... \r\n");
 
+  int rateA = 0;
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -485,6 +487,8 @@ int main(void)
 	if(HAL_GetTick() > (a_shot + 500))
 	{
 	  a_shot = HAL_GetTick();
+	  rateA = (conv_rate * 2);
+	  conv_rate = 0;
 
 	  float t = millis/1000.0;
 		  if(rx_flagA == 1)
@@ -519,6 +523,7 @@ int main(void)
 			  HAL_Delay(100);
 			  rx_flagB = 0;
 		  }
+		  myprintf("Freq : %d  Rate: %d \r\n", ((relative_sawtooth_voltage * 4107) + 5500), rateA);
 		}
 
 	}
@@ -603,10 +608,10 @@ static void MX_ADC1_Init(void)
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
   */
   hadc1.Instance = ADC1;
-  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV8;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.ScanConvMode = ENABLE;
-  hadc1.Init.ContinuousConvMode = ENABLE;
+  hadc1.Init.ContinuousConvMode = DISABLE;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
@@ -623,7 +628,7 @@ static void MX_ADC1_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_13;
   sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  sConfig.SamplingTime = ADC_SAMPLETIME_28CYCLES;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
